@@ -127,7 +127,7 @@
 
     function playWord(word){
       return new Promise(res=>{
-        let audio = new Audio(word+".mp3");
+        let audio = new Audio(word+".wav");
         audio.onended = res;
         audio.play();
       });
