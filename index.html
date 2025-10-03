@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Word Blocks</title>
+  <style>
+    body {
+      background: #111;
+      color: #0f0;
+      font-family: monospace;
+      height: 100vh;
+      margin: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    #playback {
+      margin: 10px;
+      font-size: 20px;
+      color: #0f0;
+    }
+    #board {
+      position: relative;
+      width: 90%;
+      height: 80%;
+      border: 2px dashed #0f0;
+    }
+    .block {
+      position: absolute;
+      padding: 15px 20px;
+      background: #222;
+      border: 2px solid #0f0;
+      border-radius: 8px;
+      cursor: grab;
+      user-select: none;
+      transition: box-shadow 0.2s;
+    }
+    .glow {
+      box-shadow: 0 0 15px #0f0;
+    }
+  </style>
+</head>
+<body>
+  <div id="playback">Sentence: </div>
+  <div id="board"></div>
+
+  <script>
+    const words = ["hi","i","am","you","we","will","go","to","me"];
+    const board = document.getElementById("board");
+    const playback = document.getElementById("playback");
+
+    // Create blocks
+    words.forEach((word,i)=>{
+      let div = document.createElement("div");
+      div.className = "block";
+      div.innerText = word;
+      div.style.left = (50 + i*60) + "px";
+      div.style.top = (50 + (i%2)*70) + "px";
+      div.dataset.word = word;
+      board.appendChild(div);
+    });
+
+    let dragged = null, offsetX=0, offsetY=0;
+
+    document.addEventListener("mousedown", e=>{
+      if(e.target.classList.contains("block")){
+        dragged = e.target;
+        offsetX = e.offsetX;
+        offsetY = e.offsetY;
+      }
+    });
+
+    document.addEventListener("mousemove", e=>{
+      if(dragged){
+        dragged.style.left = (e.pageX - board.offsetLeft - offsetX) + "px";
+        dragged.style.top  = (e.pageY - board.offsetTop - offsetY) + "px";
+        checkGlow();
+      }
+    });
+
+    document.addEventListener("mouseup", e=>{
+      if(dragged){
+        checkSentence();
+      }
+      dragged = null;
+    });
+
+    function rectsTouch(r1,r2){
+      return !(r2.left>r1.right || 
+               r2.right<r1.left || 
+               r2.top>r1.bottom ||
+               r2.bottom<r1.top);
+    }
+
+    function checkGlow(){
+      let blocks = [...document.querySelectorAll(".block")];
+      blocks.forEach(b=>b.classList.remove("glow"));
+      for(let i=0;i<blocks.length;i++){
+        for(let j=i+1;j<blocks.length;j++){
+          let r1 = blocks[i].getBoundingClientRect();
+          let r2 = blocks[j].getBoundingClientRect();
+          if(rectsTouch(r1,r2)){
+            blocks[i].classList.add("glow");
+            blocks[j].classList.add("glow");
+          }
+        }
+      }
+    }
+
+    async function checkSentence(){
+      let blocks = [...document.querySelectorAll(".block")];
+      // Sort by x position
+      blocks.sort((a,b)=>parseInt(a.style.left)-parseInt(b.style.left));
+      // Only take glowing sequence
+      let glowing = blocks.filter(b=>b.classList.contains("glow"));
+      if(glowing.length>1){
+        let sentence = glowing.map(b=>b.dataset.word).join(" ");
+        playback.innerText = "Sentence: " + sentence;
+        // Play audio sequentially
+        for(let b of glowing){
+          await playWord(b.dataset.word);
+        }
+      }
+    }
+
+    function playWord(word){
+      return new Promise(res=>{
+        let audio = new Audio(word+".mp3");
+        audio.onended = res;
+        audio.play();
+      });
+    }
+  </script>
+</body>
+</html>
